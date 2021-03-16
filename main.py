@@ -1,22 +1,9 @@
-from machine import UART, ADC
-from time import sleep
-
-# create serial TX
-uart = UART(1, baudrate=62500)
-
-# use potentiometer on input pin to change values
-adc = ADC()
-var_pin = adc.channel(pin='P13')
 
 
-def sendframe(count=0):
+
+def build_frame(percentage=0):
 
     # steadily increase percentage to simulate changing values
-    percent = (frame_count % 100) / 100
-
-    # if count isn't passed, use input pin
-    if not frame_count:
-        percent = var_pin / 4096
     
     # create frame buffer
     frame = bytearray(33)
@@ -26,23 +13,23 @@ def sendframe(count=0):
     frame[1] = 84 # PROM
     frame[2] = 1  # status
 
-    ap = percent * 15.2
+    ap = percentage * 15.2
     MAP = int((ap-1.5) * 18.6)
     frame[3] = MAP  # mass air pressure
     
-    wt = percent * 247
+    wt = percentage * 247
     CTS = int((wt+40)/1.125)
     frame[4] = CTS #  coolant temperature
 
     # frame[5] = IAT
 
-    volts12 = percent * 15.7
+    volts12 = percentage * 15.7
     frame[6] = int(volts12*16.24) # system voltage
-    volts5 = percent * 4.98
+    volts5 = percentage * 4.98
     frame[7] = int(volts5 * 51.2) # sensor voltage
 
     # max "rpm" is 8000
-    rpm = percent * 8000
+    rpm = percentage * 8000 if percentage > 0 else 100
     
     # convert to milliseconds between spark plug firing
     gap = int(20000000/rpm)
@@ -52,46 +39,103 @@ def sendframe(count=0):
     upperG = (gap >> 8) & 0xFF
     frame[8] = lowerG
     frame[9] = upperG
-    print("gap: {} upper: 0x{:02X} lower: 0x{:02X}".format(gap, upperG, lowerG))
+    # print("gap: {} upper: 0x{:02X} lower: 0x{:02X}".format(gap, upperG, lowerG))
 
+    tp = percentage * 2.55
+    frame[10] = int(tp)
 
-    # signal the start of the frame
-    uart.write(b'\x00')
+    sa = percentage * 50
+    frame[11] = int(sa)
 
-    # send each byte of the frame
-    for b in frame:
-
-        # if the value is 255, send twice to avoid confusion with endframe marker
-        if b == 255:
-            uart.write(b'\xFF')
-        
-        # send frame value
-        uart.write(bytes([b]))
     
-    # signal the end of the frame
-    uart.write(b'\xFF')
+
+    return frame
+
+class ECUSim():
+
+    def __init__(self):
+        raise NotImplemented("need to define uart interface")
+
+    def send(self, frame):
+
+        # signal the start of the frame
+        self.uart.write(b'\x00')
+
+        # send each byte of the frame
+        for b in frame:
+
+            # if the value is 255, send twice to avoid confusion with endframe marker
+            if b == 255:
+                self.uart.write(b'\xFF')
+            
+            # send frame value
+            self.uart.write(bytes([b]))
+        
+        # signal the end of the frame
+        self.uart.write(b'\xFF')
+
+    def receive(self):
+        raise NotImplemented("abstract base class")
+
+class PycomSim(ECUSim):
+
+    def __init__(self):
+        from machine import UART, ADC
+        self.uart = UART(1, baudrate=62500)
+
+class UnixSim(ECUSim):
+
+    def __init__(self):
+        import serial
+        self.uart = serial.Serial('/dev/ttyAMA0')
+
+
+import sys
+from time import sleep
+
+if __name__ == "__main__":
+
+    ecuSim = None
+
+    if sys.platform == 'WiPy':
+        ecuSim = PycomSim()
+    elif sys.platform in ['darwin', 'raspberrypi']:
+        ecuSim = UnixSim()
+    else:
+        raise NotImplemented("unsupported architecture")
+
+    print("sending frame...", end='')
+    count = 0
+    while True:
+
+        frame = build_frame(count/100)
+        ecuSim.send(frame)
+        print(".", end='')
+        count = (count + 1) % 100
+        sleep(1)
+
 
 # connect TX -> RX to verify sending
-def readframe():
-    while uart.any():
-        raw = uart.read(1)
-        print("{}".format(raw))
+# def readframe():
+#     while uart.any():
+#         raw = uart.read(1)
+#         print("{}".format(raw))
 
 
 # manually send frames
-sendframe(10)
-sendframe(20)
+# sendframe(10)
+# sendframe(20)
 
 
 # continually send frame. use frame count to increase values
-frame_count = 1
-while True:
+# frame_count = 1
+# while True:
 
-    sendframe(frame_count)
-    print("frame sent")
-    sleep(1)
+#     sendframe(frame_count)
+#     print("frame sent")
+#     sleep(1)
     
-    readframe()
+#     readframe()
 
-    frame_count += 1
+#     frame_count += 1
     
