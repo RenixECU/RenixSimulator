@@ -42,12 +42,12 @@ def build_frame(percentage=0):
     # print("gap: {} upper: 0x{:02X} lower: 0x{:02X}".format(gap, upperG, lowerG))
 
     tp = percentage * 2.55
-    frame[10] = int(tp)
+    frame[12] = int(tp)
 
     sa = percentage * 50
-    frame[11] = int(sa)
+    frame[13] = int(sa)
 
-    
+
 
     return frame
 
