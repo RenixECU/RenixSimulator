@@ -14,8 +14,9 @@ def build_frame(percentage=0):
     frame[2] = 1  # status
 
     ap = percentage * 15.2
-    MAP = int((ap-1.5) * 18.6)
-    frame[3] = MAP  # mass air pressure
+    MAP = int((ap+1.5) * 18.6)
+    print(ap)
+    frame[3] = min(MAP, 255)  # mass air pressure
     
     wt = percentage * 247
     CTS = int((wt+40)/1.125)
@@ -87,7 +88,7 @@ class UnixSim(ECUSim):
 
     def __init__(self):
         import serial
-        self.uart = serial.Serial('/dev/ttyAMA0')
+        self.uart = serial.Serial('/dev/ttys005')
 
 
 import sys
