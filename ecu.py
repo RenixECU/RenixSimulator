@@ -8,10 +8,9 @@ def build_frame(percentage=0):
     # create frame buffer
     frame = bytearray(33)
 
-    
-    frame[0] = 42 # version number
-    frame[1] = 84 # PROM
-    frame[2] = 1  # status
+    frame[0] = 42  # version number
+    frame[1] = 84  # PROM
+    frame[2] = 1   # status
 
     ap = percentage * 15.2
     MAP = int((ap+1.5) * 18.6)
@@ -20,9 +19,11 @@ def build_frame(percentage=0):
     
     wt = percentage * 247
     CTS = int((wt+40)/1.125)
-    frame[4] = CTS #  coolant temperature
+    frame[4] = CTS  # coolant temperature
 
-    # frame[5] = IAT
+    at = (1 - percentage) * 90
+    IAT = int((at+40)/1.125)
+    frame[5] = IAT
 
     volts12 = percentage * 15.7
     frame[6] = int(volts12*16.24) # system voltage
@@ -88,7 +89,7 @@ class UnixSim(ECUSim):
 
     def __init__(self):
         import serial
-        self.uart = serial.Serial('/dev/ttys005')
+        self.uart = serial.Serial('/dev/ttys007')
 
 
 import sys
