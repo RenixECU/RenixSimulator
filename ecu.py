@@ -1,5 +1,6 @@
+#!/usr/bin/env python3
 
-
+from random import randint
 
 def build_frame(percentage=0):
 
@@ -89,7 +90,7 @@ class UnixSim(ECUSim):
 
     def __init__(self):
         import serial
-        self.uart = serial.Serial('/dev/ttys007')
+        self.uart = serial.Serial('/dev/ttys006')
 
 
 import sys
@@ -107,13 +108,20 @@ if __name__ == "__main__":
         raise NotImplemented("unsupported architecture")
 
     print("sending frame...", end='')
-    count = 0
+    count = 50
     while True:
 
-        frame = build_frame(count/100)
-        ecuSim.send(frame)
-        print(".", end='')
-        count = (count + 1) % 100
+        iters = randint(1, 20)
+
+        for i in range(1, iters):
+            frame = build_frame(count/100)
+            ecuSim.send(frame)
+            print(".", end='')
+            sleep(1)
+
+        nval = randint(-10, 10)
+
+        count = (count + nval) % 100
         sleep(1)
 
 
